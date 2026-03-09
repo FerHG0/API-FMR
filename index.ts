@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { errorHandler } from "./middlewares/errorMiddlewere";
+
 // --- SWAGGER ---
 import swaggerUI from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
@@ -17,13 +19,23 @@ import { Usuario, Proveedor, Producto, Lote, Venta, DetalleVenta } from "./model
 // Rutas
 import usuarioRoutes from "./routes/usuarioRoutes";
 import proveedorRoutes from "./routes/proveedorRoutes"
+import productoRoutes from "./routes/productoRoutes"
+
 
 const app = express();
 
 // --- Middlewares globales ---
 app.use(cors());
 app.use(express.json());
+app.use((err: any, req: Request, res: Response, next: any) => {
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({
+      error: "JSON inválido en la petición"
+    });
+  }
 
+  next();
+});
 // --- CONFIGURACIÓN DE SWAGGER ---
 const swaggerSpec = {
   definition: {
@@ -56,8 +68,12 @@ app.get("/api/health", (req: Request, res: Response) => {
 
 // --- RUTAS ---
 app.use("/api/usuarios", usuarioRoutes);
-app.use('/api/proveedores', proveedorRoutes);
+app.use("/api/proveedores", proveedorRoutes);
+app.use("/api/productos", productoRoutes);
 
+
+// middleware de errores
+app.use(errorHandler);
 
 // --- Puerto al que se conecta ---
 const PORT = process.env.PORT || 3000;

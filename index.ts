@@ -14,12 +14,15 @@ dotenv.config();
 import sequelize from "./config/db";
 
 //Modelos ya relacionados
-import { Usuario, Proveedor, Producto, Lote, Venta, DetalleVenta } from "./models";
+import { Usuario, Proveedor, Producto, Lote, Venta, DetalleVenta, Cliente} from "./models";
 
 // Rutas
 import usuarioRoutes from "./routes/usuarioRoutes";
-import proveedorRoutes from "./routes/proveedorRoutes"
-import productoRoutes from "./routes/productoRoutes"
+import proveedorRoutes from "./routes/proveedorRoutes";
+import productoRoutes from "./routes/productoRoutes";
+import clientesRoutes from "./routes/clientesRoutes";
+import loteRoutes from "./routes/loteRoutes"
+import ventaRoutes from "./routes/ventaRoutes";
 
 
 const app = express();
@@ -70,7 +73,9 @@ app.get("/api/health", (req: Request, res: Response) => {
 app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/proveedores", proveedorRoutes);
 app.use("/api/productos", productoRoutes);
-
+app.use("/api/clientes", clientesRoutes);
+app.use("/api/lotes", loteRoutes);
+app.use("/api/ventas", ventaRoutes);
 
 // middleware de errores
 app.use(errorHandler);

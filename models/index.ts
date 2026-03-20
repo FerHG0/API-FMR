@@ -4,7 +4,7 @@ import Producto from "./Producto";
 import Lote from "./Lote";
 import Venta from "./Venta";
 import DetalleVenta from "./DetalleVenta";
-
+import Cliente from "./Cliente";
 // --- DEFINICIÓN DE RELACIONES (Foreign Keys) ---
 
 // 1. Usuario -> Ventas (Un usuario hace muchas ventas)
@@ -31,12 +31,17 @@ DetalleVenta.belongsTo(Producto, { foreignKey: "id_producto" });
 Lote.hasMany(DetalleVenta, { foreignKey: "id_registro_lote" });
 DetalleVenta.belongsTo(Lote, { foreignKey: "id_registro_lote" });
 
-// Exportamos todos los modelos ya relacionados
+//Cliente -> Venta (Un cliente hace muchas compras)
+Cliente.hasMany(Venta, { foreignKey: "id_cliente" });
+Venta.belongsTo(Cliente, { foreignKey: "id_cliente" });
+
+// Exporta todos los modelos ya relacionados
 export {
   Usuario,
   Proveedor,
   Producto,
   Lote,
   Venta,
-  DetalleVenta
+  DetalleVenta,
+  Cliente 
 };

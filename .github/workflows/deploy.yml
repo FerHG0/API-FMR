@@ -1,0 +1,51 @@
+name: Deploy API Farmacia
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # --- FASE 1: Construcción en GitHub ---
+      - name: Clonar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0' # La versión exacta de tu Droplet
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Compilar TypeScript a JavaScript
+        run: npm run build
+
+      # --- FASE 2: Transferencia Segura al Servidor ---
+      # En lugar de usar git pull en el servidor, GitHub enviará solo el código final
+      - name: Copiar archivos compilados al Droplet
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          # Enviamos solo la carpeta dist y los archivos de dependencias
+          source: "dist/,package.json,package-lock.json" 
+          target: "/root/API-FMR"
+          overwrite: true
+
+      # --- FASE 3: Reinicio del Servidor ---
+      - name: Instalar dependencias de producción y reiniciar
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /root/API-FMR
+            # --omit=dev evita instalar TypeScript y otras herramientas pesadas en el servidor
+            npm install --omit=dev 
+            pm2 restart api-farmacia

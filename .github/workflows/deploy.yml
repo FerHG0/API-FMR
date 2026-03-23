@@ -45,7 +45,11 @@ jobs:
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
+            export PATH=$PATH:/root/.nvm/versions/node/v24.14.0/bin
+            
+            # 2. Entramos a la carpeta de la API
             cd /root/API-FMR
-            # Reemplaza /RUTA/A/npm y /RUTA/A/pm2 con lo que te dio el comando which
-            /root/.nvm/versions/node/v24.14.0/bin/npm install --omit=dev 
-            /root/.nvm/versions/node/v24.14.0/bin/pm2 restart api-farmacia
+            
+            # 3. Como ya cargamos la ruta, podemos usar los comandos normalmente
+            npm install --omit=dev 
+            pm2 restart api-farmacia

@@ -46,6 +46,6 @@ jobs:
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
             cd /root/API-FMR
-            # --omit=dev evita instalar TypeScript y otras herramientas pesadas en el servidor
-            npm install --omit=dev 
-            pm2 restart api-farmacia
+            # Reemplaza /RUTA/A/npm y /RUTA/A/pm2 con lo que te dio el comando which
+            /root/.nvm/versions/node/v24.14.0/bin/npm install --omit=dev 
+            /root/.nvm/versions/node/v24.14.0/bin/pm2 restart api-farmacia

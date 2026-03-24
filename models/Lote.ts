@@ -10,6 +10,8 @@ interface LoteAttributes {
   fecha_ingreso?: Date;
   id_proveedor: number; // Llave foránea
   id_producto: number;  // Llave foránea
+  factura?: string;
+  observaciones?: string;
 }
 
 interface LoteCreationAttributes extends Optional<LoteAttributes, "id_registro_lote" | "cantidad"> {}
@@ -22,6 +24,8 @@ class Lote extends Model<LoteAttributes, LoteCreationAttributes> implements Lote
   public readonly fecha_ingreso!: Date;
   public id_proveedor!: number;
   public id_producto!: number;
+  public factura?: string;
+  public observaciones?: string;
 }
 
 Lote.init({
@@ -30,7 +34,9 @@ Lote.init({
   cantidad: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   fecha_caducidad: { type: DataTypes.DATEONLY, allowNull: false },
   id_proveedor: { type: DataTypes.INTEGER, allowNull: false },
-  id_producto: { type: DataTypes.INTEGER, allowNull: false }
+  id_producto: { type: DataTypes.INTEGER, allowNull: false },
+  factura: { type: DataTypes.STRING(100), allowNull: true },
+  observaciones: { type: DataTypes.STRING(255), allowNull: true },
 }, {
   sequelize,
   tableName: "lotes",
@@ -38,7 +44,7 @@ Lote.init({
   createdAt: "fecha_ingreso",
   updatedAt: false,
   indexes: [
-    { unique: true, fields: ["codigo_lote_fisico", "id_producto"] } // ¡Excelente decisión este índice!
+    { unique: true, fields: ["codigo_lote_fisico", "id_producto"] }
   ]
 });
 

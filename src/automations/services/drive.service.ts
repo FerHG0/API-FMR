@@ -101,7 +101,7 @@ export async function uploadToDriveAndCleanUp(
       if (err) {
         console.error(`⚠️ Error al eliminar el archivo local ${filePath}:`, err);
       } else {
-        console.log(`🗑️ Archivo local ${fileName} eliminado para liberar espacio.`);
+        console.log(`Archivo local ${fileName} eliminado para liberar espacio.`);
       }
     });
 

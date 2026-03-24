@@ -26,6 +26,7 @@ import productoRoutes from "./routes/productoRoutes";
 import clientesRoutes from "./routes/clientesRoutes";
 import loteRoutes from "./routes/loteRoutes"
 import ventaRoutes from "./routes/ventaRoutes";
+import doctorRoutes from "./routes/doctorRoutes"
 
 
 const app = express();
@@ -82,6 +83,7 @@ app.use("/api/productos", productoRoutes);
 app.use("/api/clientes", clientesRoutes);
 app.use("/api/lotes", loteRoutes);
 app.use("/api/ventas", ventaRoutes);
+app.use("/api/doctores", doctorRoutes);
 
 // middleware de errores
 app.use(errorHandler);

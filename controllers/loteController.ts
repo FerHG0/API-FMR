@@ -1,17 +1,26 @@
 import { Request, Response } from 'express';
 import Lote from '../models/Lote';
-
+import { Op } from 'sequelize';
+import { Proveedor } from '../models';
 // 1. REGISTRAR LOTE
 export const registrarLote = async (req: Request, res: Response) => {
   try {
-    const { codigo_lote_fisico, cantidad, fecha_caducidad, id_proveedor, id_producto } = req.body;
-
-    // Validación 1: Campos vacíos
+    const { codigo_lote_fisico, cantidad, fecha_caducidad, factura, observaciones, id_proveedor, id_producto } = req.body;
+// NUEVA VALIDACIÓN: Revisar el estado del proveedor
+    const proveedor = await Proveedor.findByPk(id_proveedor);
+    if (!proveedor) {
+      return res.status(404).json({ error: "El proveedor indicado no existe en la base de datos." });
+    }
+    if (!proveedor.estado) { // O la propiedad que uses para saber si está inactivo
+      return res.status(403).json({ 
+        error: "Este proveedor está marcado como INACTIVO. No se puede ingresar mercancía de un proveedor dado de baja." 
+      });
+    } 
+    // Validación 1: Campos vacíos (No exigimos factura/observaciones porque pueden ser opcionales)
     if (!codigo_lote_fisico || cantidad === undefined || !fecha_caducidad || !id_proveedor || !id_producto) {
       return res.status(400).json({ error: "Faltan campos obligatorios. Revisa el formulario." });
     }
 
-    // Validación 2: Lógica de negocio
     if (cantidad <= 0) {
       return res.status(400).json({ error: "La cantidad del lote debe ser mayor a cero." });
     }
@@ -20,6 +29,8 @@ export const registrarLote = async (req: Request, res: Response) => {
     res.status(201).json({
       mensaje: "Lote registrado exitosamente en el inventario.",
       lote: nuevoLote
+
+      
     });
 
   } catch (error: any) {
@@ -53,7 +64,7 @@ export const obtenerLotes = async (_req: Request, res: Response) => {
   }
 };
 
-// 👇 3. NUEVO ENDPOINT: OBTENER LOTES POR PRODUCTO
+// 3. OBTENER LOTES POR PRODUCTO
 export const obtenerLotesPorProducto = async (req: Request, res: Response) => {
   try {
     const id_producto = Number(req.params.id_producto);
@@ -61,12 +72,13 @@ export const obtenerLotesPorProducto = async (req: Request, res: Response) => {
     const lotes = await Lote.findAll({
       where: { 
         id_producto: id_producto,
+        cantidad: { [Op.gt]: 0 } // <--- Ignora los lotes "coloreados"/vacíos (Mayor a 0)
       },
-      order: [['fecha_caducidad', 'ASC']] // PEPS: Los que caducan antes, salen primero
+      order: [['fecha_caducidad', 'ASC']] // PEPS
     });
 
     if (lotes.length === 0) {
-      return res.status(404).json({ mensaje: "No hay lotes registrados para este producto." });
+      return res.status(404).json({ mensaje: "No hay stock disponible para este producto." });
     }
 
     res.json(lotes);

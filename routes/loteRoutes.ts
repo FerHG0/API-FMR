@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { registrarLote, obtenerLotes, obtenerLotesPorProducto } from '../controllers/loteController';
 import { verificarToken } from '../middlewares/authMiddleware';
+import { esAdmin } from '../middlewares/rolValidator'; 
 
 const router = Router();
 
@@ -27,27 +28,29 @@ const router = Router();
  *       properties:
  *         id_registro_lote:
  *           type: integer
- *           description: ID autoincremental
  *         codigo_lote_fisico:
  *           type: string
- *           description: Código impreso en la caja del medicamento
  *         cantidad:
  *           type: integer
- *           description: Número de unidades ingresadas
  *         fecha_caducidad:
  *           type: string
  *           format: date
- *           description: Fecha de vencimiento (YYYY-MM-DD)
+ *         factura:
+ *           type: string
+ *           description: Número de factura del proveedor (Opcional)
+ *         observaciones:
+ *           type: string
+ *           description: Detalles adicionales del ingreso (Opcional)
  *         id_proveedor:
  *           type: integer
- *           description: ID del proveedor que surtió el lote
  *         id_producto:
  *           type: integer
- *           description: ID del producto del catálogo
  *       example:
  *         codigo_lote_fisico: "L2025-ABC123"
  *         cantidad: 200
  *         fecha_caducidad: "2025-12-31"
+ *         factura: "FAC-99882"
+ *         observaciones: "Cajas ligeramente dobladas"
  *         id_proveedor: 3
  *         id_producto: 15
  */

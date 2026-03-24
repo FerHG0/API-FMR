@@ -24,8 +24,8 @@ export const generateDailySalesReport = async (): Promise<string> => {
     // 2. Consultar datos
     const ventas = await Venta.findAll({
         /* COMENTARIO PARA TEST: 
-           Si tu BD local no tiene ventas de HOY, comenta el 'where' 
-           para que el Excel no salga vacío durante tus pruebas.
+           Si la BD local no tiene ventas de HOY, comentar el 'where' 
+           para que el Excel no salga vacío durante las pruebas.
         */
         where: {
             fecha_venta: {
@@ -75,7 +75,7 @@ export const generateDailySalesReport = async (): Promise<string> => {
         const venta = ventaInstance.get({ plain: true }) as any;
         
         // Imprimimos la primera venta para ver exactamente cómo Sequelize armó el JSON
-        console.log("🔍 Estructura de la venta:", JSON.stringify(venta, null, 2));
+        console.log("Estructura de la venta:", JSON.stringify(venta, null, 2));
 
         const detalles = venta.DetalleVentas || venta.DetalleVenta || [];
 
@@ -84,7 +84,7 @@ export const generateDailySalesReport = async (): Promise<string> => {
         const objCliente = venta.Cliente || venta.cliente || {};
 
         if (detalles.length === 0) {
-            console.warn(`⚠️ Venta folio ${venta.id_venta} no tiene detalles.`);
+            console.warn(`Venta folio ${venta.id_venta} no tiene detalles.`);
         }
 
         detalles.forEach((detalle: any) => {

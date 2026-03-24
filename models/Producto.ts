@@ -9,6 +9,8 @@ interface ProductoAttributes {
   precio_costo: number;
   precio_venta: number;
   requiere_receta: boolean;
+  presentacion: string;
+  estado: boolean;
 }
 
 interface ProductoCreationAttributes
@@ -25,6 +27,8 @@ class Producto
   public precio_costo!: number;
   public precio_venta!: number;
   public requiere_receta!: boolean;
+  public presentacion!: string;
+  public estado!: boolean; 
 }
 
 Producto.init(
@@ -63,6 +67,16 @@ Producto.init(
   requiere_receta: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+
+  presentacion:{
+    type: DataTypes.STRING(150),
+    allowNull: false
+  },
+  
+  estado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   }
 
 },

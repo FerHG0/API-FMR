@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { verificarToken } from '../middlewares/authMiddleware';
 import { obtenerProveedores, crearProveedor, actualizarProveedor, desactivarProveedor } from '../controllers/proveedorController';
+import { esAdmin } from '../middlewares/rolValidator';
 
 const router = Router();
 
@@ -64,7 +65,7 @@ router.get('/', verificarToken, obtenerProveedores);
  *       401:
  *         description: No autorizado
  */
-router.post('/', verificarToken, crearProveedor);
+router.post('/', verificarToken, esAdmin, crearProveedor);
 
 /**
  * @swagger
@@ -93,7 +94,7 @@ router.post('/', verificarToken, crearProveedor);
  *       404:
  *         description: Proveedor no encontrado
  */
-router.put('/:id', verificarToken, actualizarProveedor);
+router.put('/:id', verificarToken, esAdmin, actualizarProveedor);
 
 /**
  * @swagger
@@ -117,6 +118,6 @@ router.put('/:id', verificarToken, actualizarProveedor);
  *         description: Proveedor no encontrado
  */
 
-router.patch("/:id", verificarToken, desactivarProveedor);
+router.patch("/:id", verificarToken, esAdmin, desactivarProveedor);
 
 export default router;

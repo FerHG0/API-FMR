@@ -8,6 +8,7 @@ import {
   eliminarCliente
 } from "../controllers/clienteController";
 import { verificarToken } from "../middlewares/authMiddleware";
+import { esAdmin } from '../middlewares/rolValidator';
 
 const router = Router();
 
@@ -43,6 +44,7 @@ const router = Router();
  *         nombre: "María García"
  *         telefono: "4491234567"
  *         correo: "maria.g@email.com"
+ *         identificación: "GAHM190521HASRRAA6"
  */
 
 /**
@@ -65,7 +67,7 @@ const router = Router();
  *       400:
  *         description: Datos inválidos
  */
-router.post("/", verificarToken, crearCliente);
+router.post("/", verificarToken, esAdmin, crearCliente);
 
 /**
  * @swagger
@@ -85,7 +87,7 @@ router.post("/", verificarToken, crearCliente);
  *               items:
  *                 $ref: '#/components/schemas/Cliente'
  */
-router.get("/", verificarToken, obtenerClientes);
+router.get("/", verificarToken, esAdmin, obtenerClientes);
 
 /**
  * @swagger
@@ -141,7 +143,7 @@ router.get("/:id", verificarToken, obtenerClientePorId);
  *       404:
  *         description: Cliente no encontrado
  */
-router.put("/:id", verificarToken, actualizarCliente);
+router.put("/:id", verificarToken, esAdmin, actualizarCliente);
 
 /**
  * @swagger
@@ -164,6 +166,6 @@ router.put("/:id", verificarToken, actualizarCliente);
  *       404:
  *         description: Cliente no encontrado
  */
-router.delete("/:id", verificarToken, eliminarCliente);
+router.delete("/:id", verificarToken, esAdmin, eliminarCliente);
 
 export default router;

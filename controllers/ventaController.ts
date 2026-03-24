@@ -4,13 +4,14 @@ import DetalleVenta from '../models/DetalleVenta';
 import Lote from '../models/Lote';
 import sequelize from '../config/db'; 
 import Producto from '../models/Producto';
-import Cliente from '../models/Cliente'
+import Cliente from '../models/Cliente';
+import Doctor from '../models/Doctor';
 
 export const registrarVenta = async (req: Request, res: Response) => {
   const t = await sequelize.transaction();
 
   try {
-    const { dinero_recibido, id_cliente, detalles } = req.body;
+    const { dinero_recibido, id_cliente, id_doctor, tipo_salida, folio_receta, detalles } = req.body;
 
     if (!dinero_recibido || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
       await t.rollback();
@@ -19,16 +20,25 @@ export const registrarVenta = async (req: Request, res: Response) => {
 
     // 1. VALIDACIÓN FLEXIBLE DEL CLIENTE
     let clienteValido = false;
-    let id_cliente_final = null; // Por defecto, venta al público general
+    let id_cliente_final = null; 
 
     if (id_cliente) {
       const cliente = await Cliente.findByPk(id_cliente, { transaction: t });
-      
-      // Si el cliente existe y está activo, lo vinculamos a la venta.
-      // Si está inactivo (!cliente.estado), simplemente lo ignoramos y se queda como null.
       if (cliente && cliente.estado) {
         clienteValido = true;
         id_cliente_final = id_cliente;
+      }
+    }
+
+    // 1.5. VALIDACIÓN DEL DOCTOR (Nueva pieza clave)
+    let doctorValido = false;
+    let id_doctor_final = null;
+
+    if (id_doctor) {
+      const doctor = await Doctor.findByPk(id_doctor, { transaction: t });
+      if (doctor && doctor.estado) {
+        doctorValido = true;
+        id_doctor_final = id_doctor;
       }
     }
 
@@ -45,15 +55,19 @@ export const registrarVenta = async (req: Request, res: Response) => {
         throw new Error(`El producto con ID ${item.id_producto} no existe.`);
       }
 
-      // Validamos si es antibiótico/controlado. Aquí SÍ exigimos un cliente válido y activo.
-      if (producto.requiere_receta && !clienteValido) {
-        throw new Error(`El medicamento '${producto.nombre_comercial}' requiere receta médica y solo puede venderse a un cliente registrado y activo.`);
+      // VALIDACIÓN LEGAL DE FARMACIA: Antibiótico exige Cliente Y Doctor
+      if (producto.requiere_receta) {
+        if (!clienteValido) {
+          throw new Error(`El medicamento '${producto.nombre_comercial}' requiere receta. Solo puede venderse a un cliente registrado y activo.`);
+        }
+        if (!doctorValido) {
+          throw new Error(`El medicamento '${producto.nombre_comercial}' es un antibiótico. Debes asignar un Doctor válido y activo para la receta.`);
+        }
       }
 
       item.precio_unitario = Number(producto.precio_venta); 
       item.subtotal = item.precio_unitario * item.cantidad;
       totalCalculado += item.subtotal;
-      
       item.requiere_receta_seguro = producto.requiere_receta; 
     }
 
@@ -73,7 +87,10 @@ export const registrarVenta = async (req: Request, res: Response) => {
       dinero_recibido: recibidoNum,
       cambio: cambioCalculado,
       id_usuario,
-      id_cliente: id_cliente_final // Guardará el ID válido, o null si era inactivo/no proporcionado
+      id_cliente: id_cliente_final, 
+      id_doctor: id_doctor_final,
+      tipo_salida: tipo_salida,  
+      folio_receta: folio_receta 
     }, { transaction: t });
 
     // 4. PROCESAMIENTO DE STOCK Y DETALLES
@@ -98,6 +115,7 @@ export const registrarVenta = async (req: Request, res: Response) => {
         id_venta: nuevaVenta.id_venta,         
         id_producto: item.id_producto,
         id_registro_lote: item.id_registro_lote,
+        // Asumiendo que esta columna existe en tu tabla de detalles:
         requiere_control: item.requiere_receta_seguro 
       }, { transaction: t });
     }
@@ -120,7 +138,8 @@ export const registrarVenta = async (req: Request, res: Response) => {
       error.message.includes("Inventario insuficiente") || 
       error.message.includes("Datos incompletos") || 
       error.message.includes("no existe") ||
-      error.message.includes("requiere receta médica")
+      error.message.includes("requiere receta") ||
+      error.message.includes("antibiótico") 
     ) {
       return res.status(400).json({ error: error.message });
     }
@@ -128,7 +147,7 @@ export const registrarVenta = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error interno crítico al procesar la venta." });
   }
 };
-// 2. Obtener historial de ventas
+
 export const obtenerVentas = async (_req: Request, res: Response) => {
   try {
     const ventas = await Venta.findAll({

@@ -1,15 +1,17 @@
+// routes/productoRoutes.ts
 import { Router } from "express";
 import {
   crearProducto,
   obtenerProductos,
   obtenerProductoPorId,
   actualizarProducto,
-  eliminarProducto
+  eliminarProducto,
+  scanProducto
 } from "../controllers/productoController";
 import { verificarToken } from "../middlewares/authMiddleware";
-import { scanProducto } from '../controllers/productoController';
 import { validarProducto } from "../middlewares/productoValidator";
 import { validarCampos } from "../middlewares/validationMiddlewere";
+import { esAdmin } from '../middlewares/rolValidator'; 
 
 
 const router = Router();
@@ -45,35 +47,52 @@ const router = Router();
  *         sustancia_activa:
  *           type: string
  *           description: Sustancia activa del medicamento
+ *         presentacion:
+ *           type: string
+ *           description: Presentación física (ej. Caja con 20 tabletas)
  *         precio_costo:
  *           type: number
  *           format: float
  *         precio_venta:
  *           type: number
  *           format: float
- *         requiere:receta:
+ *         requiere_receta:
  *           type: boolean
- *           description: Indica si el medicamento requiere registro de cliente (antibióticos)
- * 
+ *           description: Indica si el medicamento requiere registro de receta médica (antibióticos)
+ *         estado:
+ *           type: boolean
+ *           description: Indica si el producto está activo (Borrado lógico)
  *       example:
  *         id_producto: 1
  *         codigo_barras: "7501234567890"
- *         nombre_comercial: "Paracetamol 500mg"
- *         sustancia_activa: "Paracetamol"
- *         precio_costo: 20.50
- *         precio_venta: 35.00
- * 
+ *         nombre_comercial: "Amoxicilina"
+ *         sustancia_activa: "Amoxicilina 500mg"
+ *         presentacion: "Caja con 12 cápsulas"
+ *         precio_costo: 35.50
+ *         precio_venta: 80.00
+ *         requiere_receta: true
+ *         estado: true
  */
 
 /**
  * @swagger
  * /api/productos:
  *   get:
- *     summary: Obtener todos los productos
+ *     summary: Obtener todos los productos activos
  *     tags: [Productos]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de productos
+ *         description: Lista de productos activos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Producto'
+ *       401:
+ *         description: No autorizado, token faltante o inválido
  *       500:
  *         description: Error interno del servidor
  */
@@ -93,6 +112,20 @@ router.get("/", verificarToken, obtenerProductos);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del producto
+ *     responses:
+ *       200:
+ *         description: Datos del producto encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Producto'
+ *       401:
+ *         description: No autorizado, token faltante o inválido
+ *       404:
+ *         description: Producto no encontrado
+ *       500:
+ *         description: Error interno del servidor
  */
 router.get("/:id", verificarToken, obtenerProductoPorId);
 
@@ -108,23 +141,27 @@ router.get("/:id", verificarToken, obtenerProductoPorId);
  *       required: true
  *       content:
  *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Producto'
  *           example:
  *             codigo_barras: "7501234567890"
- *             nombre_comercial: "Paracetamol 500mg"
- *             sustancia_activa: "Paracetamol"
- *             precio_costo: 12.50
- *             precio_venta: 18.00
+ *             nombre_comercial: "Amoxicilina"
+ *             sustancia_activa: "Amoxicilina 500mg"
+ *             presentacion: "Caja con 12 cápsulas"
+ *             precio_costo: 35.50
+ *             precio_venta: 80.00
  *             requiere_receta: true
  *     responses:
  *       201:
  *         description: Producto registrado correctamente
  *       400:
- *         description: Datos inválidos
+ *         description: Datos inválidos o código de barras duplicado
+ *       401:
+ *         description: No autorizado, token faltante o inválido
  *       500:
  *         description: Error interno del servidor
  */
-
-router.post("/", verificarToken, validarProducto, validarCampos, crearProducto);
+router.post("/", verificarToken, validarProducto, validarCampos, esAdmin, crearProducto);
 
 /**
  * @swagger
@@ -141,27 +178,33 @@ router.post("/", verificarToken, validarProducto, validarCampos, crearProducto);
  *         description: ID del producto a actualizar
  *         schema:
  *           type: integer
- *         example: 1
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Producto'
  *           example:
  *             codigo_barras: "7501234567890"
- *             nombre_comercial: "Paracetamol 500mg"
- *             sustancia_activa: "Paracetamol"
- *             precio_costo: 13.00
- *             precio_venta: 20.00
+ *             nombre_comercial: "Amoxicilina"
+ *             sustancia_activa: "Amoxicilina 500mg"
+ *             presentacion: "Caja con 24 cápsulas"
+ *             precio_costo: 40.00
+ *             precio_venta: 95.00
  *             requiere_receta: true
  *     responses:
  *       200:
  *         description: Producto actualizado correctamente
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: No autorizado, token faltante o inválido
  *       404:
  *         description: Producto no encontrado
  *       500:
  *         description: Error interno del servidor
  */
-router.put("/:id", verificarToken, actualizarProducto);
+router.put("/:id", verificarToken, actualizarProducto, esAdmin);
 
 /**
  * @swagger
@@ -178,29 +221,40 @@ router.put("/:id", verificarToken, actualizarProducto);
  *         description: ID del producto
  *         schema:
  *           type: integer
- *         example: 1
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               precio_venta:
+ *                 type: number
+ *                 format: float
+ *               estado:
+ *                 type: boolean
  *           example:
- *             precio_venta: 21.00
+ *             precio_venta: 105.00
+ *             estado: false
  *     responses:
  *       200:
  *         description: Producto actualizado parcialmente
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: No autorizado, token faltante o inválido
  *       404:
  *         description: Producto no encontrado
  *       500:
- *         description: Error interno
+ *         description: Error interno del servidor
  */
-
-router.patch("/:id", verificarToken, actualizarProducto);
+router.patch("/:id", verificarToken, actualizarProducto, esAdmin);
 
 /**
  * @swagger
  * /api/productos/{id}:
  *   delete:
- *     summary: Eliminar un producto
+ *     summary: Desactivar un producto (Borrado lógico)
  *     tags: [Productos]
  *     security:
  *       - bearerAuth: []
@@ -208,19 +262,58 @@ router.patch("/:id", verificarToken, actualizarProducto);
  *       - in: path
  *         name: id
  *         required: true
- *         description: ID del producto a eliminar
+ *         description: ID del producto a desactivar
  *         schema:
  *           type: integer
- *         example: 1
  *     responses:
  *       200:
- *         description: Producto eliminado correctamente
+ *         description: Producto desactivado correctamente
+ *       401:
+ *         description: No autorizado, token faltante o inválido
  *       404:
  *         description: Producto no encontrado
  *       500:
  *         description: Error interno del servidor
  */
-router.delete("/:id", verificarToken, eliminarProducto);
+router.delete("/:id", verificarToken, eliminarProducto, esAdmin);
+
+/**
+ * @swagger
+ * /api/productos/scan:
+ *   post:
+ *     summary: Buscar un producto activo por código de barras
+ *     tags: [Productos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - codigo_barras
+ *             properties:
+ *               codigo_barras:
+ *                 type: string
+ *           example:
+ *             codigo_barras: "7501234567890"
+ *     responses:
+ *       200:
+ *         description: Producto encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Producto'
+ *       400:
+ *         description: Código de barras no proporcionado
+ *       401:
+ *         description: No autorizado, token faltante o inválido
+ *       404:
+ *         description: Producto no registrado o inactivo
+ *       500:
+ *         description: Error al escanear producto
+ */
 router.post('/scan', verificarToken, scanProducto);
 
 export default router;

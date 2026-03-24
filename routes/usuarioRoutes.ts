@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { crearUsuario, loginUsuario, obtenerUsuarios, desactivarUsuario } from "../controllers/usuarioController";
 import { verificarToken } from "../middlewares/authMiddleware";
+import { esAdmin } from "../middlewares/rolValidator";
 
 const router = Router();
 
@@ -32,7 +33,7 @@ const router = Router();
  *         nombre: Carlos Vendedor
  *         email: carlos@farmaciarincon.com
  *         password: MiPasswordSeguro123
- *         rol: Vendedor
+ *         rol: Vendedor/Administrador (solo puede ser uno de los dos tal cual las palabras con mayúscula)
  *     LoginReq:
  *       type: object
  *       required:
@@ -68,7 +69,7 @@ const router = Router();
  *       500:
  *         description: Error interno del servidor
  */
-router.post("/", crearUsuario);
+router.post("/", verificarToken, esAdmin, crearUsuario);
 
 /**
  * @swagger
@@ -133,6 +134,6 @@ router.post("/login", loginUsuario);
  *         description: Error interno del servidor
  */
 router.get("/", verificarToken, obtenerUsuarios);
-router.patch("/:id", verificarToken, desactivarUsuario);
+router.patch("/:id", verificarToken, esAdmin, desactivarUsuario);
 
 export default router;

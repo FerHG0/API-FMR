@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { registrarVenta, obtenerVentas } from '../controllers/ventaController';
 import { verificarToken } from '../middlewares/authMiddleware';
+import { esAdmin } from '../middlewares/rolValidator';
 
 const router = Router();
 
@@ -21,30 +22,32 @@ const router = Router();
  *       properties:
  *         id_venta:
  *           type: integer
- *           description: ID autoincremental del ticket
  *         total:
  *           type: number
  *           format: float
- *           description: Total calculado por el servidor
  *         dinero_recibido:
  *           type: number
  *           format: float
- *           description: Cantidad entregada por el cliente
  *         cambio:
  *           type: number
  *           format: float
- *           description: Vuelto calculado automáticamente
  *         id_usuario:
  *           type: integer
- *           description: ID del cajero (extraído del token)
  *         id_cliente:
  *           type: integer
  *           nullable: true
- *           description: ID del cliente (puede ser nulo)
+ *         id_doctor:
+ *           type: integer
+ *           nullable: true
+ *         tipo_salida:
+ *           type: string
+ *           nullable: true
+ *         folio_receta:
+ *           type: string
+ *           nullable: true
  *         fecha_venta:
  *           type: string
  *           format: date-time
- *           description: Fecha y hora de la venta
  *       example:
  *         id_venta: 1024
  *         total: 345.50
@@ -52,7 +55,10 @@ const router = Router();
  *         cambio: 154.50
  *         id_usuario: 3
  *         id_cliente: 1
- *         fecha_venta: "2025-03-19T15:30:00.000Z"
+ *         id_doctor: 2
+ *         tipo_salida: "MR"
+ *         folio_receta: "REC-9922"
+ *         fecha_venta: "2026-03-24T15:30:00.000Z"
  */
 
 /**
@@ -60,7 +66,7 @@ const router = Router();
  * /api/ventas:
  *   post:
  *     summary: Registra una nueva venta en el punto de venta
- *     description: Procesa un ticket de venta. Calcula automáticamente los subtotales y el total desde la base de datos, descuenta el stock de los lotes indicados y valida reglas de negocio (ej. antibióticos requieren cliente activo).
+ *     description: Procesa un ticket de venta y descuenta stock del lote especificado.
  *     tags: [Ventas]
  *     security:
  *       - bearerAuth: []
@@ -77,15 +83,23 @@ const router = Router();
  *               dinero_recibido:
  *                 type: number
  *                 format: float
- *                 description: Monto entregado por el cliente para pagar.
  *                 example: 500.00
  *               id_cliente:
  *                 type: integer
- *                 description: ID del cliente. Opcional. Si el cliente está inactivo, la venta pasará como público general a menos que haya medicamentos controlados.
  *                 example: 1
+ *               id_doctor:
+ *                 type: integer
+ *                 description: ID del doctor. Obligatorio si hay antibióticos en el carrito.
+ *                 example: 2
+ *               tipo_salida:
+ *                 type: string
+ *                 description: Identificador de farmacia (ej. MR o SR)
+ *                 example: "MR"
+ *               folio_receta:
+ *                 type: string
+ *                 example: "REC-99882"
  *               detalles:
  *                 type: array
- *                 description: Lista de productos en el carrito.
  *                 items:
  *                   type: object
  *                   required:
@@ -98,7 +112,6 @@ const router = Router();
  *                       example: 10
  *                     id_registro_lote:
  *                       type: integer
- *                       description: ID interno del lote del cual se descontará el stock físico.
  *                       example: 5
  *                     cantidad:
  *                       type: integer
@@ -106,39 +119,12 @@ const router = Router();
  *     responses:
  *       201:
  *         description: Venta registrada y procesada exitosamente.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 mensaje:
- *                   type: string
- *                   example: Ticket procesado y stock descontado con éxito.
- *                 total_venta:
- *                   type: number
- *                   format: float
- *                   example: 345.50
- *                 cambio_a_entregar:
- *                   type: number
- *                   format: float
- *                   example: 154.50
- *                 id_venta:
- *                   type: integer
- *                   example: 1024
  *       400:
  *         description: Error de validación, lógica de negocio o fondos insuficientes.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: El medicamento 'Amoxicilina' requiere receta médica y solo puede venderse a un cliente registrado y activo.
  *       401:
- *         description: No autorizado (Falta token de usuario en el header).
+ *         description: No autorizado.
  *       500:
- *         description: Error interno crítico al procesar la venta.
+ *         description: Error interno crítico.
  */
 router.post('/', verificarToken, registrarVenta);
 

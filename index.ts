@@ -13,6 +13,9 @@ dotenv.config();
 //conexión a la base de datos
 import sequelize from "./config/db";
 
+// 1. Importas la función que hace los respaldos automáticamente
+import { startAutomations } from './src/automations/cron/task';
+
 //Modelos ya relacionados
 import { Usuario, Proveedor, Producto, Lote, Venta, DetalleVenta, Cliente} from "./models";
 
@@ -59,7 +62,10 @@ const swaggerSpec = {
 };
 
 // interfaz gráfica de Swagger
+if (process.env.NODE_ENV !== 'production') {
 app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerJsDoc(swaggerSpec)));
+console.log('Documentación de la API habilitada en /api-docs');
+}
 
 // Ruta de prueba (Health Check)
 app.get("/api/health", (req: Request, res: Response) => {
@@ -98,6 +104,8 @@ const startServer = async (): Promise<void> => {
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
+
+    startAutomations();
   } catch (error) {
     console.error("Error fatal al iniciar el servidor o conectar a la BD:", error);
   }

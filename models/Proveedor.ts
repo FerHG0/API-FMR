@@ -8,6 +8,7 @@ interface ProveedorAttributes {
   telefono?: string;
   correo?: string;
   estado: boolean;
+  domicilio?: string
 }
 
 // 2. Definimos cuáles son opcionales al momento de CREAR (id_proveedor es autoincremental)
@@ -22,7 +23,8 @@ class Proveedor
   public razon_social!: string;
   public telefono?: string;
   public correo?: string;
-  public estado!: boolean; 
+  public estado!: boolean;
+  public domicilio?: string | undefined;
 }
 
 // 4. Inicializamos
@@ -45,7 +47,11 @@ Proveedor.init({
   estado: { 
     type: DataTypes.BOOLEAN, 
     defaultValue: true 
-  }
+  },
+  domicilio: {
+    type: DataTypes.STRING,
+    allowNull: true,
+},
 }, {
   sequelize,
   tableName: "proveedores",

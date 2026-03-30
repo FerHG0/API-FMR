@@ -5,6 +5,7 @@ import sequelize from "../config/db";
 interface UserAttributes {
   id: number;
   nombre: string;
+  apellido: string;
   email: string;
   password: string;
   rol: "Administrador" | "Vendedor";
@@ -20,6 +21,7 @@ interface UserCreationAttributes extends Optional<UserAttributes, "id" | "rol" |
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
   public nombre!: string;
+  public apellido!: string;
   public email!: string;
   public password!: string;
   public rol!: "Administrador" | "Vendedor";
@@ -40,6 +42,10 @@ User.init(
     nombre: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    apellido:{
+      type: DataTypes.STRING,
+        allowNull: true,
     },
     email: {
       type: DataTypes.STRING,

@@ -3,110 +3,115 @@ import fs from 'fs';
 import path from 'path';
 
 const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  'https://developers.google.com/oauthplayground' // Esta URL debe coincidir con la que pusiste en Cloud Console
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    'https://developers.google.com/oauthplayground'
 );
 
 oauth2Client.setCredentials({
-  refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+    refresh_token: process.env.GOOGLE_REFRESH_TOKEN
 });
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
-// Este ID lo sacas de la URL de la carpeta en tu Drive personal que compartiste con la Service Account
-// Ej: https://drive.google.com/drive/folders/1A2b3C4d5E6f7G8h9I0j?usp=sharing -> El ID es "1A2b3C4d5E6f7G8h9I0j"
-const PARENT_FOLDER_ID = process.env.DRIVE_PARENT_FOLDER_ID || 'TU_ID_DE_CARPETA_AQUI';
 
-/**
- * Busca si la carpeta del día ya existe. Si no, la crea.
- */
-async function getOrCreateDailyFolder(dateStr: string): Promise<string> {
-  const folderName = `Respaldo_${dateStr}`;
-  
-  try {
-    // 1. Buscamos si ya existe una carpeta con ese nombre en nuestro directorio padre
-    const query = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${PARENT_FOLDER_ID}' in parents and trashed=false`;
-    
-    const response = await drive.files.list({
-      q: query,
-      fields: 'files(id, name)',
-      spaces: 'drive',
-    });
+const PARENT_FOLDER_ID = process.env.DRIVE_PARENT_FOLDER_ID || '';
 
-    // 2. Si la encuentra, devolvemos el ID existente
-    if (response.data.files && response.data.files.length > 0) {
-      console.log(` Carpeta existente encontrada en Drive: ${folderName}`);
-      return response.data.files[0].id!;
+// Cache en memoria de nombre de carpeta -> ID de Drive.
+// Evita llamadas duplicadas a la API cuando se suben varios archivos
+// a la misma carpeta dentro de la misma ejecucion (ej: zip + excel el mismo dia).
+const folderCache = new Map<string, string>();
+
+// ============================================================================
+// BUSCAR O CREAR CARPETA EN DRIVE
+// ============================================================================
+async function getOrCreateFolder(folderName: string): Promise<string> {
+    // Si ya fue resuelta en esta sesion, la devuelve directamente sin llamar a Drive
+    if (folderCache.has(folderName)) {
+        console.log(`[Drive] Carpeta obtenida del cache: ${folderName}`);
+        return folderCache.get(folderName)!;
     }
 
-    // 3. Si no existe, la creamos
-    const fileMetadata = {
-      name: folderName,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [PARENT_FOLDER_ID]
-    };
+    const query = [
+        `mimeType='application/vnd.google-apps.folder'`,
+        `name='${folderName}'`,
+        `'${PARENT_FOLDER_ID}' in parents`,
+        `trashed=false`
+    ].join(' and ');
+
+    const response = await drive.files.list({
+        q: query,
+        fields: 'files(id, name)',
+        spaces: 'drive'
+    });
+
+    if (response.data.files && response.data.files.length > 0) {
+        const id = response.data.files[0].id!;
+        console.log(`[Drive] Carpeta existente encontrada: ${folderName} (${id})`);
+        folderCache.set(folderName, id);
+        return id;
+    }
 
     const folder = await drive.files.create({
-      requestBody: fileMetadata,
-      fields: 'id'
+        requestBody: {
+            name: folderName,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [PARENT_FOLDER_ID]
+        },
+        fields: 'id'
     });
-    
-    console.log(`Nueva carpeta creada en Drive: ${folderName}`);
-    return folder.data.id!;
-  } catch (error) {
-    console.error('Error buscando/creando la carpeta en Drive:', error);
-    throw error;
-  }
+
+    const id = folder.data.id!;
+    console.log(`[Drive] Nueva carpeta creada: ${folderName} (${id})`);
+    folderCache.set(folderName, id);
+    return id;
 }
 
-/**
- * Sube un archivo a Drive usando Streams y lo elimina del Droplet al terminar
- */
+// ============================================================================
+// SUBIR ARCHIVO A DRIVE Y ELIMINAR LOCAL
+// Parametros:
+//   filePath  - Ruta local del archivo a subir
+//   folderName - Nombre de la carpeta destino en Drive (dentro de PARENT_FOLDER_ID)
+//   mimeType  - MIME type del archivo (default: application/zip)
+// ============================================================================
 export async function uploadToDriveAndCleanUp(
-  filePath: string, 
-  dateStr: string, 
-  mimeType: string = 'application/zip'
+    filePath: string,
+    folderName: string,
+    mimeType: string = 'application/zip'
 ): Promise<void> {
-  try {
-    console.log(`Iniciando subida a Drive del archivo: ${filePath}`);
-    
-    // 1. Crear la carpeta del día (o podrías modificar la función para buscar si ya existe)
-    const folderId = await getOrCreateDailyFolder(dateStr);
+    console.log(`[Drive] Iniciando subida: ${path.basename(filePath)} -> ${folderName}`);
 
-    // 2. Configurar los metadatos del archivo
-    const fileName = path.basename(filePath);
-    const fileMetadata = {
-      name: fileName,
-      parents: [folderId]
-    };
+    try {
+        const folderId = await getOrCreateFolder(folderName);
 
-    // 3. Configurar el flujo (Stream) de lectura
-    // ¡Crucial para el Droplet! Leemos el archivo del disco en pedacitos, no a la RAM.
-    const media = {
-      mimeType: mimeType,
-      body: fs.createReadStream(filePath)
-    };
+        // Usa Stream para leer el archivo en fragmentos, no cargarlo completo a RAM
+        const media = {
+            mimeType,
+            body: fs.createReadStream(filePath)
+        };
 
-    // 4. Ejecutar la subida a Google Drive
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id'
-    });
+        const response = await drive.files.create({
+            requestBody: {
+                name: path.basename(filePath),
+                parents: [folderId]
+            },
+            media,
+            fields: 'id'
+        });
 
-    console.log(`Archivo subido exitosamente a Drive con ID: ${response.data.id}`);
+        console.log(`[Drive] Subida exitosa. ID: ${response.data.id}`);
 
-    // 5. Eliminar el archivo local para liberar espacio en el Droplet
-    fs.unlink(filePath, (err) => {
-      if (err) {
-        console.error(`⚠️ Error al eliminar el archivo local ${filePath}:`, err);
-      } else {
-        console.log(`Archivo local ${fileName} eliminado para liberar espacio.`);
-      }
-    });
+    } catch (error) {
+        console.error('[Drive] Error durante la subida:', error);
+        throw error;
 
-  } catch (error) {
-    console.error('Error durante la subida a Drive:', error);
-    throw error;
-  }
+    } finally {
+        // El archivo local se elimina siempre: tanto si la subida fue exitosa
+        // como si fallo. Asi no se acumulan archivos en el Droplet.
+        if (fs.existsSync(filePath)) {
+            fs.unlink(filePath, (err) => {
+                if (err) console.error(`[Drive] No se pudo eliminar el archivo local ${filePath}:`, err);
+                else console.log(`[Drive] Archivo local eliminado: ${path.basename(filePath)}`);
+            });
+        }
+    }
 }

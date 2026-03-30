@@ -6,6 +6,7 @@ import sequelize from '../config/db';
 import Producto from '../models/Producto';
 import Cliente from '../models/Cliente';
 import Doctor from '../models/Doctor';
+import { waSocket } from '../src/whatsapp/bot.service';
 
 export const registrarVenta = async (req: Request, res: Response) => {
   const t = await sequelize.transaction();
@@ -93,7 +94,10 @@ export const registrarVenta = async (req: Request, res: Response) => {
       folio_receta: folio_receta 
     }, { transaction: t });
 
+
     // 4. PROCESAMIENTO DE STOCK Y DETALLES
+    const alertasInventario: any[] = [];
+
     for (const item of detalles) {
       const lote = await Lote.findByPk(item.id_registro_lote, { transaction: t });
       
@@ -108,6 +112,17 @@ export const registrarVenta = async (req: Request, res: Response) => {
       lote.cantidad -= item.cantidad;
       await lote.save({ transaction: t });
 
+      // 🚀 EVALUAMOS EL STOCK PARA LA ALERTA
+      if (lote.cantidad <= 5) {
+        // Buscamos el nombre del producto para que el mensaje sea legible
+        const productoAlerta = await Producto.findByPk(item.id_producto, { transaction: t });
+        alertasInventario.push({
+            nombre: productoAlerta?.nombre_comercial || 'Producto Desconocido',
+            cantidadRestante: lote.cantidad,
+            loteFisico: lote.codigo_lote_fisico
+        });
+      }
+
       await DetalleVenta.create({
         cantidad: item.cantidad,
         precio_unitario: item.precio_unitario, 
@@ -115,13 +130,30 @@ export const registrarVenta = async (req: Request, res: Response) => {
         id_venta: nuevaVenta.id_venta,         
         id_producto: item.id_producto,
         id_registro_lote: item.id_registro_lote,
-        // Asumiendo que esta columna existe en tu tabla de detalles:
         requiere_control: item.requiere_receta_seguro 
       }, { transaction: t });
     }
 
     // 5. CONFIRMA LOS CAMBIOS EN LA BD
     await t.commit();
+// 🚀 DISPARO DE ALERTAS AUTOMÁTICAS (POST-COMMIT)
+    if (alertasInventario.length > 0 && waSocket) {
+      // Tomamos el primer número de la lista de admins
+      const adminNumber = process.env.ADMIN_WHATSAPP_NUMBERS?.split(',')[0] + '@s.whatsapp.net';
+      
+      for (const alerta of alertasInventario) {
+        const icono = alerta.cantidadRestante === 0 ? '❌' : '⚠️';
+        const mensaje = `🚨 *ALERTA DE INVENTARIO AUTOMÁTICA* 🚨\n\nSe acaba de vender *${alerta.nombre}*.\nEl inventario del lote ${alerta.loteFisico} ha caído a nivel crítico: ${icono} *${alerta.cantidadRestante} unidades restantes*.\n\n_Atendido por: ID Usuario ${id_usuario}_`;
+        
+        try {
+            await waSocket.sendMessage(adminNumber, { text: mensaje });
+        } catch (error) {
+            console.error("No se pudo enviar la alerta de WhatsApp:", error);
+            // No hacemos throw error porque la venta ya fue exitosa, 
+            // solo registramos que la notificación falló.
+        }
+      }
+    }
 
     res.status(201).json({
       mensaje: "Ticket procesado y stock descontado con éxito.",
@@ -146,6 +178,8 @@ export const registrarVenta = async (req: Request, res: Response) => {
 
     res.status(500).json({ error: "Error interno crítico al procesar la venta." });
   }
+
+  
 };
 
 export const obtenerVentas = async (_req: Request, res: Response) => {

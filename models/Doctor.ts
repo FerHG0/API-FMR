@@ -3,7 +3,8 @@ import db from '../config/db';
 
 class Doctor extends Model {
     public id!: number;
-    public nombre_completo!: string;
+    public nombre!: string;
+    public apellido!: string;
     public cedula_profesional!: string | null;
     public domicilio_consultorio!: string;
     public especialidad!: string;
@@ -16,9 +17,13 @@ Doctor.init({
         autoIncrement: true,
         primaryKey: true,
     },
-    nombre_completo: {
+    nombre: {
         type: DataTypes.STRING,
         allowNull: false,
+    },
+    apellido: {
+        type: DataTypes.STRING,
+        allowNull: true,
     },
     cedula_profesional: {
         type: DataTypes.STRING,

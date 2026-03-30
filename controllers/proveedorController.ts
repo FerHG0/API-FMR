@@ -6,14 +6,15 @@ interface CrearProveedorBody {
   razon_social: string;
   telefono?: string;
   correo?: string;
+  domicilio?: string;
 }
 
 // Crear un nuevo proveedor
 export const crearProveedor = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { razon_social, telefono, correo }: CrearProveedorBody = req.body;
+    const { razon_social, telefono, correo, domicilio }: CrearProveedorBody = req.body;
 
-    const nuevo = await Proveedor.create({ razon_social, telefono, correo });
+    const nuevo = await Proveedor.create({ razon_social, telefono, correo, domicilio });
 
     res.status(201).json(nuevo);
   } catch (error) {

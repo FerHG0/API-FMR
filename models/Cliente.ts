@@ -4,6 +4,7 @@ import sequelize from "../config/db";
 interface ClienteAttributes {
   id_cliente: number;
   nombre: string;
+  apellido: string
   telefono?: string;
   correo?: string;
   identificacion: string;
@@ -16,6 +17,7 @@ interface ClienteCreationAttributes extends Optional<ClienteAttributes, "id_clie
 class Cliente extends Model<ClienteAttributes, ClienteCreationAttributes> implements ClienteAttributes {
   public id_cliente!: number;
   public nombre!: string;
+  public apellido!: string;
   public telefono?: string;
   public correo?: string;
   public identificacion!: string;
@@ -51,10 +53,14 @@ Cliente.init({
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
   },
-  estado: { // 3. Agregar a la definición de Sequelize
+  estado: { 
     type: DataTypes.BOOLEAN,
     defaultValue: true,
     allowNull: false
+  },
+  apellido: {
+    type: DataTypes.STRING(150),
+    allowNull: true
   }
 }, {
   sequelize,

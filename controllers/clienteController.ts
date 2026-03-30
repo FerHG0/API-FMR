@@ -3,7 +3,7 @@ import Cliente from "../models/Cliente";
 
 export const crearCliente = async (req: Request, res: Response) => {
   try {
-    const { nombre, telefono, correo, identificacion, estado } = req.body;
+    const { nombre, apellido, telefono, correo, identificacion, estado } = req.body;
 
     if (!nombre || !identificacion) {
       return res.status(400).json({
@@ -23,6 +23,7 @@ export const crearCliente = async (req: Request, res: Response) => {
 
     const cliente = await Cliente.create({
       nombre,
+      apellido,
       telefono,
       correo,
       identificacion,

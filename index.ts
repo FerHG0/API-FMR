@@ -1,20 +1,17 @@
 import express, { Request, Response } from "express";
-import cors from "cors";
+import cors, {CorsOptions} from "cors";
 import dotenv from "dotenv";
 import { errorHandler } from "./middlewares/errorMiddlewere";
-
 // --- SWAGGER ---
 import swaggerUI from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
-
 // Configurar dotenv
 dotenv.config();
-
 //conexión a la base de datos
 import sequelize from "./config/db";
-
-// 1. Importas la función que hace los respaldos automáticamente
+// 1. Importaciones de automatizaciones
 import { startAutomations } from './src/automations/cron/task';
+import { iniciarBotWhatsApp } from './src/whatsapp/bot.service';
 
 //Modelos ya relacionados
 import { Usuario, Proveedor, Producto, Lote, Venta, DetalleVenta, Cliente} from "./models";
@@ -31,8 +28,26 @@ import doctorRoutes from "./routes/doctorRoutes"
 
 const app = express();
 
+// -----CONF CORS-----
+const origenesPermitidos = [
+  'http://localhost:5173', // El puerto por defecto de Vite (para que tu compañera pruebe en local)
+  'http://161.35.234.161', // La IP del Droplet (para cuando el front esté en producción servido por Nginx en el puerto 80)
+  'http://161.35.234.161:3000' // Por si hacen peticiones directas temporalmente
+];
+
+const corsOptions: CorsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    if (!origin || origenesPermitidos.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true, 
+};
+
 // --- Middlewares globales ---
-app.use(cors());
+
 app.use(express.json());
 app.use((err: any, req: Request, res: Response, next: any) => {
   if (err instanceof SyntaxError && "body" in err) {
@@ -108,6 +123,7 @@ const startServer = async (): Promise<void> => {
     });
 
     startAutomations();
+    iniciarBotWhatsApp();
   } catch (error) {
     console.error("Error fatal al iniciar el servidor o conectar a la BD:", error);
   }

@@ -8,6 +8,7 @@ type RolUsuario = "Administrador" | "Vendedor";
 // Interfaz para el body del usuario
 interface CrearUsuarioBody {
   nombre: string;
+  apellido: string
   email: string;
   password: string;
   rol?: RolUsuario;
@@ -17,9 +18,9 @@ interface CrearUsuarioBody {
 // POST: Crear usuario
 export const crearUsuario = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nombre, email, password, rol }: CrearUsuarioBody = req.body;
+    const { nombre, apellido, email, password, rol }: CrearUsuarioBody = req.body;
 
-    if (!nombre || !email || !password) {
+    if (!nombre || !email || !password|| !apellido) {
       res.status(400).json({ error: "Es necesario completar los campos" });
       return;
     }
@@ -35,6 +36,7 @@ export const crearUsuario = async (req: Request, res: Response): Promise<void> =
 
     const nuevoUsuario = await Usuario.create({
       nombre,
+      apellido,
       email,
       password: passwordEncriptada,
       rol: rol ?? "Vendedor"

@@ -23,10 +23,14 @@ const router = Router();
  *         correo:
  *           type: string
  *           description: Correo electrónico del proveedor
+ *         domicilio:
+ *           type: string
+ *           description: Domicilio del proveedor
  *       example:
  *         razon_social: Distribuidora Farmacéutica Nacional
  *         telefono: "4491234567"
  *         correo: contacto@distribuidora.com
+ *         domicilio: Mi calle de la colonia #123
  */
 
 /**

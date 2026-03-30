@@ -1,43 +1,90 @@
 import cron from 'node-cron';
 import { createLocalBackup, cleanOldBackups } from '../services/backup.service';
-import { generateDailySalesReport } from '../services/report.service';
+import { generateDailySalesReport, generateMonthlySalesReport } from '../services/report.service';
 import { uploadToDriveAndCleanUp } from '../services/drive.service';
 
-// Función orquestadora que ejecuta todo en orden
-const runDailyRoutine = async () => {
-    console.log('[CRON] Iniciando rutina nocturna de respaldos y reportes...');
+// ============================================================================
+// RUTINA DIARIA — Se ejecuta todos los dias a las 23:55
+// ============================================================================
+const runDailyRoutine = async (): Promise<void> => {
+    console.log('[Cron Diario] Iniciando rutina nocturna...');
+    const dateStr = new Date().toISOString().split('T')[0];
+
     try {
-        const dateStr = new Date().toISOString().split('T')[0];
-
-        // 1. Limpiar respaldos viejos locales (Por si algo falló y se quedaron en el Droplet)
-        cleanOldBackups();
-
-        // 2. Generar Backup BD
-        console.log('[CRON] Extrayendo base de datos...');
+        console.log('[Cron Diario] Extrayendo base de datos...');
         const zipPath = await createLocalBackup();
 
-        // 3. Generar Excel de Ventas
-        console.log('[CRON] Generando reporte de ventas...');
+        console.log('[Cron Diario] Generando reporte diario de ventas...');
         const excelPath = await generateDailySalesReport();
 
-        // 4. Subir a Drive (Se suben a la misma carpeta gracias a tu cambio)
-        console.log('[CRON] Subiendo archivos a Google Drive...');
-        await uploadToDriveAndCleanUp(zipPath, dateStr, 'application/zip');
-        await uploadToDriveAndCleanUp(excelPath, dateStr, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        // El nombre de la carpeta en Drive coincide con la convencion del servicio.
+        // getOrCreateFolder usara el cache si ya existe de una llamada previa.
+        const folderName = `Respaldo_${dateStr}`;
 
-        console.log('[CRON] ¡Rutina nocturna finalizada con éxito!');
+        console.log('[Cron Diario] Subiendo archivos a Google Drive...');
+        await uploadToDriveAndCleanUp(zipPath, folderName, 'application/zip');
+        await uploadToDriveAndCleanUp(
+            excelPath,
+            folderName,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
+        // La limpieza de backups antiguos se ejecuta al final para evitar
+        // una condicion de carrera con el archivo que acabamos de generar.
+        console.log('[Cron Diario] Eliminando respaldos antiguos...');
+        cleanOldBackups();
+
+        console.log('[Cron Diario] Rutina finalizada con exito.');
+
     } catch (error) {
-        console.error('[CRON] Error crítico en la rutina nocturna:', error);
-        // Aquí en el futuro podrías enviar un correo de alerta al dueño de la farmacia
+        console.error('[Cron Diario] Error critico:', error);
     }
 };
 
-// Programar la tarea para las 23:55 (11:55 PM) todos los días
-// Formato Cron: Minuto (55) Hora (23) Día del mes (*) Mes (*) Día de la semana (*)
-export const startAutomations = () => {
+// ============================================================================
+// RUTINA MENSUAL — Se ejecuta el dia 1 de cada mes a las 00:05
+// ============================================================================
+const runMonthlyRoutine = async (): Promise<void> => {
+    console.log('[Cron Mensual] Iniciando corte de mes...');
+
+    try {
+        console.log('[Cron Mensual] Generando Excel del mes...');
+        const excelPath = await generateMonthlySalesReport();
+
+        // Carpeta separada en Drive para los cortes mensuales del anio en curso
+        const folderName = `Cortes_Mensuales_${new Date().getFullYear()}`;
+
+        console.log('[Cron Mensual] Subiendo reporte mensual a Google Drive...');
+        await uploadToDriveAndCleanUp(
+            excelPath,
+            folderName,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+
+        console.log('[Cron Mensual] Corte de mes finalizado con exito.');
+
+    } catch (error) {
+        console.error('[Cron Mensual] Error critico:', error);
+    }
+};
+
+// ============================================================================
+// PROGRAMACION DE TAREAS
+// ============================================================================
+export const startAutomations = (): void => {
+    // Reporte diario y respaldo: todos los dias a las 23:55
     cron.schedule('55 23 * * *', () => {
         runDailyRoutine();
     }, {
-        timezone: "America/Mexico_City"
+        timezone: 'America/Mexico_City'
     });
+
+    // Reporte mensual: el dia 1 de cada mes a las 00:05
+    cron.schedule('5 0 1 * *', () => {
+        runMonthlyRoutine();
+    }, {
+        timezone: 'America/Mexico_City'
+    });
+
+    console.log('[Automaciones] Modulo de automatizaciones activado.');
 };

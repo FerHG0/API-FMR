@@ -26,3 +26,6 @@ Thumbs.db
 .idea/
 *.swo
 *.swp
+
+auth_info_baileys
+backups

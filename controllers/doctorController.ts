@@ -4,7 +4,7 @@ import Doctor from '../models/Doctor';
 // Crear un nuevo doctor
 export const crearDoctor = async (req: Request, res: Response) => {
     try {
-        const { nombre_completo, cedula_profesional, domicilio_consultorio, especialidad } = req.body;
+        const { nombre, apellido, cedula_profesional, domicilio_consultorio, especialidad } = req.body;
 
         // Validar si la cédula ya existe (si es que la enviaron)
         if (cedula_profesional) {
@@ -18,7 +18,8 @@ export const crearDoctor = async (req: Request, res: Response) => {
         }
 
         const nuevoDoctor = await Doctor.create({
-            nombre_completo,
+            nombre,
+            apellido,
             cedula_profesional,
             domicilio_consultorio,
             especialidad

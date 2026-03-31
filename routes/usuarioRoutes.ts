@@ -69,7 +69,7 @@ const router = Router();
  *       500:
  *         description: Error interno del servidor
  */
-router.post("/", crearUsuario);
+router.post("/", verificarToken, crearUsuario);
 
 /**
  * @swagger

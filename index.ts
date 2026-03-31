@@ -72,6 +72,10 @@ const swaggerSpec = {
         url: "http://localhost:3000",
         description: "Servidor de Desarrollo",
       },
+      {
+        url: 'http://161.35.234.161:3000',
+        description: 'Servidor de Producción (Droplet)'
+      }
     ],
   },
   apis: ["./routes/*.ts"],

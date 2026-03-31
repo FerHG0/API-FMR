@@ -26,8 +26,6 @@ import ventaRoutes from "./routes/ventaRoutes";
 import doctorRoutes from "./routes/doctorRoutes"
 
 
-const app = express();
-
 // -----CONF CORS-----
 const origenesPermitidos = [
   'http://localhost:5173', // El puerto por defecto de Vite (para que tu compañera pruebe en local)
@@ -45,6 +43,11 @@ const corsOptions: CorsOptions = {
   },
   credentials: true, 
 };
+
+
+const app = express();
+app.use(cors(corsOptions));
+
 
 // --- Middlewares globales ---
 

@@ -1,12 +1,19 @@
 import { Request, Response } from 'express';
 import Producto from '../models/Producto';
+import { processImage } from '../middlewares/imagenesMiddlewere';
 
 export const crearProducto = async (req: Request, res: Response) => {
   try {
     const { codigo_barras, nombre_comercial, sustancia_activa, presentacion, precio_costo, precio_venta, requiere_receta } = req.body;
+    let nombreImagen = null;
 
     if (!codigo_barras || !nombre_comercial || !precio_costo || !precio_venta || requiere_receta === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios para registrar el producto.' });
+    }
+
+    // 1. PROCESA LA IMAGEN y guarda el texto en la variable
+    if (req.file) {
+      nombreImagen = await processImage(req.file.buffer);
     }
 
     const productoExistente = await Producto.findOne({
@@ -19,7 +26,16 @@ export const crearProducto = async (req: Request, res: Response) => {
       });
     }
 
-    const nuevoProducto = await Producto.create(req.body);
+    // 2. LA CONEXIÓN FINAL: 
+    // Usamos el operador "spread" (...req.body) para copiar todo el texto del formulario,
+    // y luego le inyectamos manualmente la propiedad "imagen" y parseamos el booleano.
+    const nuevoProducto = await Producto.create({
+      ...req.body,
+      // Como FormData convierte todo a string, nos aseguramos de que esto sea un true/false real para MariaDB
+      requiere_receta: requiere_receta === 'true' || requiere_receta === true,
+      imagen: nombreImagen 
+    });
+
     res.status(201).json({
       mensaje: 'Producto registrado en el catálogo con éxito.',
       producto: nuevoProducto

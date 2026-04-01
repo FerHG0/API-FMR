@@ -23,7 +23,7 @@ export const upload = multer({
 // Función para procesar la imagen con Sharp
 export const processImage = async (fileBuffer: Buffer): Promise<string> => {
   const fileName = `prod-${Date.now()}.webp`;
-  const outputPath = path.join(__dirname, '../uploads', fileName);
+const outputPath = path.join(process.cwd(), 'uploads', fileName);
 
   await sharp(fileBuffer)
     .resize(500, 500, { fit: 'cover' }) // Redimensionar a 500x500

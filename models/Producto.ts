@@ -30,7 +30,7 @@ class Producto
   public requiere_receta!: boolean;
   public presentacion!: string;
   public estado!: boolean; 
-  public imagen?: string;
+  public imagen!: string;
 }
 
 Producto.init(

@@ -11,8 +11,8 @@ import {
 import { verificarToken } from "../middlewares/authMiddleware";
 import { validarProducto } from "../middlewares/productoValidator";
 import { validarCampos } from "../middlewares/validationMiddlewere";
-import { esAdmin } from '../middlewares/rolValidator'; 
-
+import { esAdmin } from '../middlewares/rolValidator';
+import { upload, processImage } from "../middlewares/imagenesMiddlewere";
 
 const router = Router();
 
@@ -62,6 +62,9 @@ const router = Router();
  *         estado:
  *           type: boolean
  *           description: Indica si el producto está activo (Borrado lógico)
+ *         imagen:
+ *           type: string
+ *           description: Nombre del archivo de imagen (ej. prod-123.webp)
  *       example:
  *         id_producto: 1
  *         codigo_barras: "7501234567890"
@@ -72,6 +75,7 @@ const router = Router();
  *         precio_venta: 80.00
  *         requiere_receta: true
  *         estado: true
+ *         imagen: "prod-1711910000000.webp"
  */
 
 /**
@@ -133,24 +137,35 @@ router.get("/:id", verificarToken, obtenerProductoPorId);
  * @swagger
  * /api/productos:
  *   post:
- *     summary: Registrar un nuevo producto
+ *     summary: Registrar un nuevo producto con imagen
  *     tags: [Productos]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/Producto'
- *           example:
- *             codigo_barras: "7501234567890"
- *             nombre_comercial: "Amoxicilina"
- *             sustancia_activa: "Amoxicilina 500mg"
- *             presentacion: "Caja con 12 cápsulas"
- *             precio_costo: 35.50
- *             precio_venta: 80.00
- *             requiere_receta: true
+ *             type: object
+ *             properties:
+ *               codigo_barras:
+ *                 type: string
+ *               nombre_comercial:
+ *                 type: string
+ *               sustancia_activa:
+ *                 type: string
+ *               presentacion:
+ *                 type: string
+ *               precio_costo:
+ *                 type: number
+ *               precio_venta:
+ *                 type: number
+ *               requiere_receta:
+ *                 type: boolean
+ *               imagen:
+ *                 type: string
+ *                 format: binary
+ *                 description: Imagen del producto (JPG, PNG)
  *     responses:
  *       201:
  *         description: Producto registrado correctamente
@@ -161,13 +176,21 @@ router.get("/:id", verificarToken, obtenerProductoPorId);
  *       500:
  *         description: Error interno del servidor
  */
-router.post("/", verificarToken, validarProducto, validarCampos, esAdmin, crearProducto);
+router.post(
+  "/",
+  verificarToken,
+  upload.single('imagen'),
+  validarProducto,
+  validarCampos,
+  esAdmin,
+  crearProducto
+);
 
 /**
  * @swagger
  * /api/productos/{id}:
  *   put:
- *     summary: Actualizar completamente un producto
+ *     summary: Actualizar completamente un producto (con opción de nueva imagen)
  *     tags: [Productos]
  *     security:
  *       - bearerAuth: []
@@ -181,17 +204,28 @@ router.post("/", verificarToken, validarProducto, validarCampos, esAdmin, crearP
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/Producto'
- *           example:
- *             codigo_barras: "7501234567890"
- *             nombre_comercial: "Amoxicilina"
- *             sustancia_activa: "Amoxicilina 500mg"
- *             presentacion: "Caja con 24 cápsulas"
- *             precio_costo: 40.00
- *             precio_venta: 95.00
- *             requiere_receta: true
+ *             type: object
+ *             properties:
+ *               codigo_barras:
+ *                 type: string
+ *               nombre_comercial:
+ *                 type: string
+ *               sustancia_activa:
+ *                 type: string
+ *               presentacion:
+ *                 type: string
+ *               precio_costo:
+ *                 type: number
+ *               precio_venta:
+ *                 type: number
+ *               requiere_receta:
+ *                 type: boolean
+ *               imagen:
+ *                 type: string
+ *                 format: binary
+ *                 description: Nueva imagen del producto (opcional)
  *     responses:
  *       200:
  *         description: Producto actualizado correctamente
@@ -204,7 +238,13 @@ router.post("/", verificarToken, validarProducto, validarCampos, esAdmin, crearP
  *       500:
  *         description: Error interno del servidor
  */
-router.put("/:id", verificarToken, actualizarProducto, esAdmin);
+router.put(
+  "/:id",
+  verificarToken,
+  upload.single('imagen'),
+  esAdmin,
+  actualizarProducto
+);
 
 /**
  * @swagger

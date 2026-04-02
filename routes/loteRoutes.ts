@@ -1,6 +1,6 @@
 // routes/loteRoutes.ts
 import { Router } from 'express';
-import { registrarLote, obtenerLotes, obtenerLotesPorProducto } from '../controllers/loteController';
+import { registrarLote, obtenerLotes, obtenerLotesPorProducto,actualizarLote, eliminarLotePermanente } from '../controllers/loteController';
 import { verificarToken } from '../middlewares/authMiddleware';
 import { esAdmin } from '../middlewares/rolValidator'; 
 
@@ -137,5 +137,8 @@ router.get('/', verificarToken, obtenerLotes);
  *         description: Error interno del servidor.
  */
 router.get('/producto/:id_producto', verificarToken, obtenerLotesPorProducto);
+
+router.put('/:id', verificarToken, esAdmin, actualizarLote);
+router.delete('/:id', verificarToken, esAdmin, eliminarLotePermanente);
 
 export default router;

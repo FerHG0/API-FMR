@@ -2,78 +2,50 @@ import { Request, Response } from 'express';
 import Lote from '../models/Lote';
 import { Op } from 'sequelize';
 import { Proveedor, Producto } from '../models';
-// 1. REGISTRAR LOTE
+
 export const registrarLote = async (req: Request, res: Response) => {
   try {
     const { codigo_lote_fisico, cantidad, fecha_caducidad, factura, observaciones, id_proveedor, id_producto } = req.body;
-// NUEVA VALIDACIÓN: Revisar el estado del proveedor
-    const proveedor = await Proveedor.findByPk(id_proveedor);
-    if (!proveedor) {
-      return res.status(404).json({ error: "El proveedor indicado no existe en la base de datos." });
-    }
-    if (!proveedor.estado) { // O la propiedad que uses para saber si está inactivo
-      return res.status(403).json({ 
-        error: "Este proveedor está marcado como INACTIVO. No se puede ingresar mercancía de un proveedor dado de baja." 
-      });
-    } 
-    // Validación 1: Campos vacíos (No exigimos factura/observaciones porque pueden ser opcionales)
-    if (!codigo_lote_fisico || cantidad === undefined || !fecha_caducidad || !id_proveedor || !id_producto) {
-      return res.status(400).json({ error: "Faltan campos obligatorios. Revisa el formulario." });
-    }
 
-    if (cantidad <= 0) {
-      return res.status(400).json({ error: "La cantidad del lote debe ser mayor a cero." });
+    const proveedor = await Proveedor.findByPk(id_proveedor);
+    if (!proveedor) return res.status(404).json({ error: "El proveedor indicado no existe." });
+    if (!proveedor.estado) return res.status(403).json({ error: "Este proveedor está INACTIVO." });
+
+    if (!codigo_lote_fisico || cantidad === undefined || !fecha_caducidad || !id_proveedor || !id_producto) {
+      return res.status(400).json({ error: "Faltan campos obligatorios." });
     }
+    if (cantidad <= 0) return res.status(400).json({ error: "La cantidad inicial debe ser mayor a cero." });
 
     const nuevoLote = await Lote.create(req.body);
-    res.status(201).json({
-      mensaje: "Lote registrado exitosamente en el inventario.",
-      lote: nuevoLote
-
-      
-    });
-
+    res.status(201).json({ mensaje: "Lote registrado exitosamente.", lote: nuevoLote });
   } catch (error: any) {
-
-    // Error de índice único (Duplicado)
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ 
-        error: "El código de lote ya existe para este producto. Verifica la mercancía." 
-      });
+      return res.status(400).json({ error: "El código de lote ya existe en el sistema." });
     }
-
-    // Error de llave foránea (Producto o Proveedor no existen)
-    if (error.name === 'SequelizeForeignKeyConstraintError') {
-      return res.status(400).json({ 
-        error: "El producto o el proveedor seleccionado no existe en la base de datos." 
-      });
-    }
-
-    console.error("Error inesperado al registrar lote:", error);
-    res.status(500).json({ error: "Error interno del servidor al registrar el lote." });
+    res.status(500).json({ error: "Error interno del servidor." });
   }
 };
 
-// 2. OBTENER TODOS LOS LOTES (General)
-export const obtenerLotes = async (_req: Request, res: Response) => {
+// OBTENER LOTES (Filtra por Stock Activo o Agotados)
+export const obtenerLotes = async (req: Request, res: Response) => {
   try {
+    const { agotados } = req.query;
+    
+    // Si mandan ?agotados=true, buscamos cantidad 0. Si no, cantidad mayor a 0.
+    const condicion = agotados === 'true' 
+      ? { cantidad: 0 } 
+      : { cantidad: { [Op.gt]: 0 } };
+
     const lotes = await Lote.findAll({ 
-      // Aquí está el truco: Unimos las tablas para mandar nombres e imágenes al frontend
+      where: condicion,
       include: [
-        { 
-          model: Producto, 
-          attributes: ['nombre_comercial', 'imagen'] // Solo traemos lo que nos sirve
-        },
-        { 
-          model: Proveedor, 
-          attributes: ['razon_social'] 
-        }
+        { model: Producto, attributes: ['nombre_comercial', 'imagen'] },
+        { model: Proveedor, attributes: ['razon_social'] }
       ],
       order: [['fecha_caducidad', 'ASC']] 
     });
     res.json(lotes);
   } catch (error) {
-    console.error("Error al obtener lotes:", error);
     res.status(500).json({ error: "Error al obtener el inventario de lotes." });
   }
 };
@@ -100,5 +72,42 @@ export const obtenerLotesPorProducto = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error al buscar lotes del producto:", error);
     res.status(500).json({ error: "Error al buscar los lotes solicitados." });
+  }
+};
+
+// ACTUALIZAR LOTE (Para corregir errores humanos)
+export const actualizarLote = async (req: Request, res: Response) => {
+  try {
+    const id_producto = Number(req.params.id_producto);
+    const lote = await Lote.findByPk(id_producto);
+    
+    if (!lote) return res.status(404).json({ error: 'Lote no encontrado.' });
+
+    await lote.update(req.body);
+    res.json({ message: 'Lote actualizado correctamente.', lote });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar el lote.' });
+  }
+};
+
+// ELIMINAR PERMANENTEMENTE (Hard Delete)
+export const eliminarLotePermanente = async (req: Request, res: Response) => {
+  try {
+    const id_producto = Number(req.params.id_producto);
+    const lote = await Lote.findByPk(id_producto);
+    
+    if (!lote) return res.status(404).json({ error: 'Lote no encontrado.' });
+
+    // REGLA: Solo se puede eliminar si la cantidad llegó a 0
+    if (lote.cantidad > 0) {
+      return res.status(400).json({ 
+        error: 'Operación denegada. El lote aún cuenta con stock. Modifica la cantidad a 0 primero si deseas eliminarlo del historial.' 
+      });
+    }
+
+    await lote.destroy();
+    res.json({ message: 'Lote eliminado de forma permanente del historial.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar permanentemente.' });
   }
 };

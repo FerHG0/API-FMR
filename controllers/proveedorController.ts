@@ -37,17 +37,27 @@ if (proveedorExistente) {
 };
 
 // Obtener todos los proveedores activos
-export const obtenerProveedores = async (req: Request, res: Response): Promise<void> => {
+export const obtenerProveedores = async (req: Request, res: Response) => {
   try {
-    const lista = await Proveedor.findAll({ where: { estado: true } });
+    // 1. Atrapamos la variable de la URL
+    const { inactivos } = req.query;
+    
+    // 2. Armamos la condición mágica
+    // Si el frontend manda inactivos=true, buscamos los que tienen estado: false
+    // Si no manda nada, buscamos los activos (estado: true)
+    const condicion = inactivos === 'true' ? { estado: false } : { estado: true };
 
-    res.status(200).json(lista);
+    // 3. Hacemos la consulta a MariaDB
+    const proveedores = await Proveedor.findAll({ 
+      where: condicion 
+    });
+
+    res.json(proveedores);
   } catch (error) {
     console.error("Error al obtener proveedores:", error);
-    res.status(500).json({ error: "Error al obtener proveedores" });
+    res.status(500).json({ error: 'Error interno del servidor al obtener los proveedores.' });
   }
 };
-
 // Actualizar datos del proveedor
 export const actualizarProveedor = async (req: Request, res: Response): Promise<void> => {
   try {

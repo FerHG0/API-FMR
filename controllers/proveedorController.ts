@@ -101,3 +101,22 @@ export const desactivarProveedor = async (req: Request, res: Response): Promise<
   }
 };
 
+export const eliminarProveedorPermanente = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const proveedor = await Proveedor.findByPk(id);
+
+    if (!proveedor) {
+      return res.status(404).json({ error: 'Proveedor no encontrado.' });
+    }
+
+    // A diferencia de .update({estado: false}), .destroy() lo borra físicamente de MariaDB
+    await proveedor.destroy();
+
+    res.json({ message: 'Proveedor eliminado de forma permanente y definitiva.' });
+  } catch (error) {
+    console.error("Error al eliminar permanentemente:", error);
+    res.status(500).json({ error: 'Error interno del servidor al eliminar.' });
+  }
+};
+

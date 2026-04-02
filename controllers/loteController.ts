@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import Lote from '../models/Lote';
 import { Op } from 'sequelize';
-import { Proveedor } from '../models';
+import { Proveedor, Producto } from '../models';
 // 1. REGISTRAR LOTE
 export const registrarLote = async (req: Request, res: Response) => {
   try {
@@ -57,9 +57,23 @@ export const registrarLote = async (req: Request, res: Response) => {
 // 2. OBTENER TODOS LOS LOTES (General)
 export const obtenerLotes = async (_req: Request, res: Response) => {
   try {
-    const lotes = await Lote.findAll({ order: [['fecha_caducidad', 'ASC']] });
+    const lotes = await Lote.findAll({ 
+      // Aquí está el truco: Unimos las tablas para mandar nombres e imágenes al frontend
+      include: [
+        { 
+          model: Producto, 
+          attributes: ['nombre_comercial', 'imagen'] // Solo traemos lo que nos sirve
+        },
+        { 
+          model: Proveedor, 
+          attributes: ['razon_social'] 
+        }
+      ],
+      order: [['fecha_caducidad', 'ASC']] 
+    });
     res.json(lotes);
   } catch (error) {
+    console.error("Error al obtener lotes:", error);
     res.status(500).json({ error: "Error al obtener el inventario de lotes." });
   }
 };

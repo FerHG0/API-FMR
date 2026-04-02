@@ -75,18 +75,24 @@ export const obtenerLotesPorProducto = async (req: Request, res: Response) => {
   }
 };
 
-// ACTUALIZAR LOTE (Para corregir errores humanos)
-// ACTUALIZAR LOTE (Para corregir errores humanos)
 export const actualizarLote = async (req: Request, res: Response) => {
   try {
-    const id_producto = Number(req.params.id_producto);
-    const lote = await Lote.findByPk(id_producto);
-    
-    if (!lote) {
-      return res.status(404).json({ error: 'Lote no encontrado.' });
+    // BLINDAJE: Atrapamos el ID sea como sea que se llame en tu loteRoutes.ts
+    const idParam = req.params.id || req.params.id_registro_lote || req.params.id_lote;
+    const idLote = parseInt(idParam as string);
+
+    // Si no es un número válido, rebotamos la petición inmediatamente
+    if (isNaN(idLote)) {
+      return res.status(400).json({ error: 'El ID del lote proporcionado en la ruta no es válido.' });
     }
 
-    // Opcional pero recomendado: Volver a validar al proveedor al editar
+    const lote = await Lote.findByPk(idLote);
+    
+    if (!lote) {
+      return res.status(404).json({ error: 'Lote no encontrado en la base de datos.' });
+    }
+
+    // Validar al proveedor al editar (opcional pero muy recomendado)
     const { id_proveedor } = req.body;
     if (id_proveedor) {
       const proveedor = await Proveedor.findByPk(id_proveedor);
@@ -98,46 +104,41 @@ export const actualizarLote = async (req: Request, res: Response) => {
     res.json({ message: 'Lote actualizado correctamente.', lote });
     
   } catch (error: any) {
-    // 🔥 EL CHISMOSO: Esto imprimirá el error real en tu terminal del Droplet
-    console.error("🔥 Error REAL al actualizar lote:", error);
-
-    // Si MariaDB se queja de un duplicado:
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ 
-        error: "Ya existe otro lote registrado con este mismo código físico." 
-      });
+      return res.status(400).json({ error: "Ya existe otro lote con este mismo código físico." });
     }
-
-    // Si hay problemas con las llaves foráneas:
     if (error.name === 'SequelizeForeignKeyConstraintError') {
-      return res.status(400).json({ 
-        error: "El producto o el proveedor seleccionado no es válido en la base de datos." 
-      });
+      return res.status(400).json({ error: "El producto o el proveedor seleccionado no es válido." });
     }
-
-    // Si es otra cosa rara, tiramos el 500 genérico
+    console.error("Error al actualizar lote:", error);
     res.status(500).json({ error: 'Error interno del servidor al actualizar el lote.' });
   }
 };
 
-// ELIMINAR PERMANENTEMENTE (Hard Delete)
+// ELIMINAR PERMANENTEMENTE
 export const eliminarLotePermanente = async (req: Request, res: Response) => {
   try {
-    const id_producto = Number(req.params.id_producto);
-    const lote = await Lote.findByPk(id_producto);
+    const idParam = req.params.id || req.params.id_registro_lote || req.params.id_lote;
+    const idLote = parseInt(idParam as string);
+
+    if (isNaN(idLote)) {
+      return res.status(400).json({ error: 'El ID del lote proporcionado en la ruta no es válido.' });
+    }
+
+    const lote = await Lote.findByPk(idLote);
     
     if (!lote) return res.status(404).json({ error: 'Lote no encontrado.' });
 
-    // REGLA: Solo se puede eliminar si la cantidad llegó a 0
     if (lote.cantidad > 0) {
       return res.status(400).json({ 
-        error: 'Operación denegada. El lote aún cuenta con stock. Modifica la cantidad a 0 primero si deseas eliminarlo del historial.' 
+        error: 'Operación denegada. El lote aún cuenta con stock. Modifica la cantidad a 0 primero.' 
       });
     }
 
     await lote.destroy();
     res.json({ message: 'Lote eliminado de forma permanente del historial.' });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar permanentemente.' });
+    console.error("Error al eliminar permanentemente:", error);
+    res.status(500).json({ error: 'Error interno al eliminar el lote.' });
   }
 };

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { verificarToken } from '../middlewares/authMiddleware';
-import { obtenerProveedores, crearProveedor, actualizarProveedor, desactivarProveedor } from '../controllers/proveedorController';
+import { obtenerProveedores, crearProveedor, actualizarProveedor, desactivarProveedor, eliminarProveedorPermanente } from '../controllers/proveedorController';
 import { esAdmin } from '../middlewares/rolValidator';
 
 const router = Router();
@@ -123,5 +123,6 @@ router.put('/:id', verificarToken, esAdmin, actualizarProveedor);
  */
 
 router.patch("/:id", verificarToken, esAdmin, desactivarProveedor);
+router.delete('/:id', verificarToken, esAdmin, eliminarProveedorPermanente);
 
 export default router;

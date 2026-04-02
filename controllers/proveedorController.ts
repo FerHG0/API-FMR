@@ -9,6 +9,7 @@ interface CrearProveedorBody {
   domicilio?: string;
 }
 
+
 // Crear un nuevo proveedor
 export const crearProveedor = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -20,6 +21,18 @@ export const crearProveedor = async (req: Request, res: Response): Promise<void>
   } catch (error) {
     console.error("Error al crear proveedor:", error);
     res.status(500).json({ error: "Error al crear proveedor" });
+
+    // Buscar si ya existe la razón social (ignorando mayúsculas/minúsculas de preferencia)
+const proveedorExistente = await Proveedor.findOne({
+  where: { razon_social: req.body.razon_social }
+});
+
+if (proveedorExistente) {
+  res.status(409).json({
+  message: "Ya existe un proveedor registrado con esta Razón Social."
+  });
+  return
+}
   }
 };
 
@@ -77,3 +90,4 @@ export const desactivarProveedor = async (req: Request, res: Response): Promise<
     res.status(500).json({ error: "Error al desactivar" });
   }
 };
+

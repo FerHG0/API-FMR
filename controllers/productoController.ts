@@ -46,15 +46,16 @@ export const crearProducto = async (req: Request, res: Response) => {
   }
 };
 
-export const obtenerProductos = async (_req: Request, res: Response) => {
+export const obtenerProductos = async (req: Request, res: Response) => {
   try {
-    // SOLO TRAE LOS PRODUCTOS ACTIVOS
-    const productos = await Producto.findAll({
-      where: { estado: true }
-    });
-    res.status(200).json(productos);
+    const { inactivos } = req.query;
+    
+    const condicion = inactivos === 'true' ? { estado: false } : { estado: true };
+
+    const productos = await Producto.findAll({ where: condicion });
+    res.json(productos);
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener la lista de productos.' });
+    res.status(500).json({ error: 'Error al obtener los productos' });
   }
 };
 

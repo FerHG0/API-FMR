@@ -48,6 +48,9 @@ const corsOptions: CorsOptions = {
 const app = express();
 app.use(cors(corsOptions));
 
+import path from 'path';
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
 
 // --- Middlewares globales ---
 

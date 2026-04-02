@@ -76,17 +76,47 @@ export const obtenerLotesPorProducto = async (req: Request, res: Response) => {
 };
 
 // ACTUALIZAR LOTE (Para corregir errores humanos)
+// ACTUALIZAR LOTE (Para corregir errores humanos)
 export const actualizarLote = async (req: Request, res: Response) => {
   try {
     const id_producto = Number(req.params.id_producto);
     const lote = await Lote.findByPk(id_producto);
     
-    if (!lote) return res.status(404).json({ error: 'Lote no encontrado.' });
+    if (!lote) {
+      return res.status(404).json({ error: 'Lote no encontrado.' });
+    }
+
+    // Opcional pero recomendado: Volver a validar al proveedor al editar
+    const { id_proveedor } = req.body;
+    if (id_proveedor) {
+      const proveedor = await Proveedor.findByPk(id_proveedor);
+      if (!proveedor) return res.status(404).json({ error: "El proveedor indicado no existe." });
+      if (!proveedor.estado) return res.status(403).json({ error: "No puedes asignar este lote a un proveedor INACTIVO." });
+    }
 
     await lote.update(req.body);
     res.json({ message: 'Lote actualizado correctamente.', lote });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al actualizar el lote.' });
+    
+  } catch (error: any) {
+    // 🔥 EL CHISMOSO: Esto imprimirá el error real en tu terminal del Droplet
+    console.error("🔥 Error REAL al actualizar lote:", error);
+
+    // Si MariaDB se queja de un duplicado:
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ 
+        error: "Ya existe otro lote registrado con este mismo código físico." 
+      });
+    }
+
+    // Si hay problemas con las llaves foráneas:
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({ 
+        error: "El producto o el proveedor seleccionado no es válido en la base de datos." 
+      });
+    }
+
+    // Si es otra cosa rara, tiramos el 500 genérico
+    res.status(500).json({ error: 'Error interno del servidor al actualizar el lote.' });
   }
 };
 

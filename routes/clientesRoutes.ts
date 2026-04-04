@@ -5,7 +5,8 @@ import {
   obtenerClientes,
   obtenerClientePorId,
   actualizarCliente,
-  eliminarCliente
+  actualizarEstadoCliente,
+  eliminarClientePermanente,
 } from "../controllers/clienteController";
 import { verificarToken } from "../middlewares/authMiddleware";
 import { esAdmin } from '../middlewares/rolValidator';
@@ -27,24 +28,36 @@ const router = Router();
  *       type: object
  *       required:
  *         - nombre
+ *         - identificacion
  *       properties:
  *         id_cliente:
  *           type: integer
  *           description: ID autoincremental del cliente
  *         nombre:
  *           type: string
- *           description: Nombre completo del cliente
+ *           description: Nombre(s) del cliente
+ *         apellido:
+ *           type: string
+ *           description: Apellidos del cliente
  *         telefono:
  *           type: string
  *           description: Número de contacto
  *         correo:
  *           type: string
  *           description: Correo electrónico (opcional)
+ *         identificacion:
+ *           type: string
+ *           description: CURP o Identificación oficial del cliente
+ *         estado:
+ *           type: boolean
+ *           description: Indica si el cliente está activo en el sistema
  *       example:
- *         nombre: "María García"
+ *         nombre: "María"
+ *         apellido: "García"
  *         telefono: "4491234567"
  *         correo: "maria.g@email.com"
- *         identificación: "GAHM190521HASRRAA6"
+ *         identificacion: "GAHM190521HASRRAA6"
+ *         estado: true
  */
 
 /**
@@ -66,6 +79,8 @@ const router = Router();
  *         description: Cliente registrado exitosamente
  *       400:
  *         description: Datos inválidos
+ *       409:
+ *         description: Identificación duplicada
  */
 router.post("/", verificarToken, esAdmin, crearCliente);
 
@@ -77,6 +92,12 @@ router.post("/", verificarToken, esAdmin, crearCliente);
  *     tags: [Clientes]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: inactivos
+ *         schema:
+ *           type: string
+ *         description: Si se envía "true", devuelve los clientes dados de baja.
  *     responses:
  *       200:
  *         description: Arreglo de clientes
@@ -142,14 +163,16 @@ router.get("/:id", verificarToken, obtenerClientePorId);
  *         description: Cliente actualizado correctamente
  *       404:
  *         description: Cliente no encontrado
+ *       409:
+ *         description: La nueva identificación ya pertenece a otro cliente
  */
 router.put("/:id", verificarToken, esAdmin, actualizarCliente);
 
 /**
  * @swagger
  * /api/clientes/{id}:
- *   delete:
- *     summary: Elimina un cliente del sistema (borrado lógico)
+ *   patch:
+ *     summary: Da de baja o reactiva a un cliente (Borrado Lógico)
  *     tags: [Clientes]
  *     security:
  *       - bearerAuth: []
@@ -159,13 +182,48 @@ router.put("/:id", verificarToken, esAdmin, actualizarCliente);
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID del cliente a eliminar
+ *         description: ID del cliente a cambiar de estado
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               estado:
+ *                 type: boolean
+ *                 description: true para reactivar, false para dar de baja
  *     responses:
  *       200:
- *         description: Cliente eliminado (o desactivado)
+ *         description: Estado del cliente actualizado
  *       404:
  *         description: Cliente no encontrado
  */
-router.delete("/:id", verificarToken, esAdmin, eliminarCliente);
+router.patch("/:id", verificarToken, esAdmin, actualizarEstadoCliente);
+
+/**
+ * @swagger
+ * /api/clientes/{id}:
+ *   delete:
+ *     summary: Elimina un cliente de forma permanente (Hard Delete)
+ *     tags: [Clientes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del cliente a eliminar definitivamente
+ *     responses:
+ *       200:
+ *         description: Cliente eliminado permanentemente del sistema
+ *       404:
+ *         description: Cliente no encontrado
+ *       409:
+ *         description: No se puede eliminar por tener dependencias (ventas/recetas)
+ */
+router.delete("/:id", verificarToken, esAdmin, eliminarClientePermanente);
 
 export default router;

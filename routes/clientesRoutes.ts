@@ -82,7 +82,7 @@ const router = Router();
  *       409:
  *         description: Identificación duplicada
  */
-router.post("/", verificarToken, esAdmin, crearCliente);
+router.post("/", verificarToken, crearCliente);
 
 /**
  * @swagger
@@ -108,7 +108,7 @@ router.post("/", verificarToken, esAdmin, crearCliente);
  *               items:
  *                 $ref: '#/components/schemas/Cliente'
  */
-router.get("/", verificarToken, esAdmin, obtenerClientes);
+router.get("/", verificarToken, obtenerClientes);
 
 /**
  * @swagger

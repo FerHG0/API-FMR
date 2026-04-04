@@ -86,19 +86,31 @@ export const actualizarCliente = async (req: Request, res: Response) => {
 // DAR DE BAJA O REACTIVAR (Borrado Lógico)
 export const actualizarEstadoCliente = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.id);
-    const nuevoEstado = req.body.estado !== undefined ? req.body.estado : false;
+    // 1. Blindaje del ID
+    const idParam = req.params.id || req.params.id_cliente;
+    const id = parseInt(idParam as string);
 
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'El ID proporcionado no es válido.' });
+    }
+
+    // 2. Blindaje del Body (Por si Express no parsea bien el JSON o llega vacío)
+    const bodyObj = req.body || {};
+    const nuevoEstado = bodyObj.estado !== undefined ? bodyObj.estado : false;
+
+    // 3. Buscar y actualizar
     const cliente = await Cliente.findByPk(id);
-    if (!cliente) return res.status(404).json({ error: "Cliente no encontrado" });
+    if (!cliente) return res.status(404).json({ error: "Cliente no encontrado en la base de datos." });
 
     await cliente.update({ estado: nuevoEstado });
     res.json({ mensaje: `El cliente ha sido ${nuevoEstado ? 'reactivado' : 'dado de baja'} correctamente.` });
+    
   } catch (error) {
-    res.status(500).json({ error: "Error interno al cambiar estado del cliente" });
+    // 🔥 EL CHISMOSO
+    console.error("🔥 Error REAL al cambiar estado de cliente:", error);
+    res.status(500).json({ error: "Error interno del servidor al intentar cambiar el estado del cliente." });
   }
 };
-
 // ELIMINACIÓN PERMANENTE (Hard Delete)
 export const eliminarClientePermanente = async (req: Request, res: Response) => {
   try {

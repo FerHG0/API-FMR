@@ -1,6 +1,6 @@
 // routes/doctorRoutes.ts
 import { Router } from 'express';
-import { crearDoctor, obtenerDoctores, eliminarDoctor } from '../controllers/doctorController';
+import { crearDoctor, obtenerDoctores, eliminarDoctor, actualizarDoctor } from '../controllers/doctorController';
 import { verificarToken } from '../middlewares/authMiddleware';
 import { esAdmin } from '../middlewares/rolValidator';
 
@@ -98,6 +98,41 @@ router.get('/', verificarToken, obtenerDoctores);
  *         description: Error interno del servidor
  */
 router.post('/', verificarToken, esAdmin, crearDoctor);
+
+/**
+ * @swagger
+ * /api/doctores/{id}:
+ *   put:
+ *     summary: Actualiza los datos de un doctor existente
+ *     tags: [Doctores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID del doctor a actualizar
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Doctor'
+ *     responses:
+ *       200:
+ *         description: Doctor actualizado exitosamente
+ *       400:
+ *         description: La cédula profesional ya está registrada por otro doctor
+ *       401:
+ *         description: No autorizado, token faltante o inválido
+ *       404:
+ *         description: Doctor no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.put('/:id', verificarToken, esAdmin, actualizarDoctor);
 
 /**
  * @swagger

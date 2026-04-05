@@ -28,9 +28,10 @@ import doctorRoutes from "./routes/doctorRoutes"
 
 // -----CONF CORS-----
 const origenesPermitidos = [
-  'http://localhost:5173', // El puerto por defecto de Vite (para que tu compañera pruebe en local)
-  'http://161.35.234.161', // La IP del Droplet (para cuando el front esté en producción servido por Nginx en el puerto 80)
-  'http://161.35.234.161:3000' // Por si hacen peticiones directas temporalmente
+  'http://localhost:5173',
+  'http://161.35.234.161',
+  'http://161.35.234.161:3000',
+  'https://posfarmaciamr.duckdns.org'
 ];
 
 const corsOptions: CorsOptions = {

@@ -38,10 +38,11 @@ export const obtenerLotes = async (req: Request, res: Response) => {
 
     const lotes = await Lote.findAll({ 
       where: condicion,
-      include: [
-        { model: Producto, attributes: ['nombre_comercial', 'imagen'] },
-        { model: Proveedor, attributes: ['razon_social'] }
-      ],
+      include: [{
+                model: Producto,
+                // 🔥 EL FIX: Agregamos precio_venta, requiere_receta y codigo_barras
+                attributes: ['id_producto', 'nombre_comercial', 'imagen', 'precio_venta', 'requiere_receta', 'codigo_barras']
+            }],
       order: [['fecha_caducidad', 'ASC']] 
     });
     res.json(lotes);

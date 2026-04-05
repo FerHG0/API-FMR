@@ -185,7 +185,23 @@ export const registrarVenta = async (req: Request, res: Response) => {
 export const obtenerVentas = async (_req: Request, res: Response) => {
   try {
     const ventas = await Venta.findAll({
-      order: [['fecha_venta', 'DESC']] 
+      order: [['fecha_venta', 'DESC']],
+      include: [
+        {
+          model: Doctor,
+          // Solo traemos el nombre y apellido para no saturar la red
+          attributes: ['nombre', 'apellido'] 
+        },
+        {
+          model: DetalleVenta,
+          include: [
+            {
+              model: Producto,
+              attributes: ['nombre_comercial'] // Necesitamos el nombre para el historial
+            }
+          ]
+        }
+      ]
     });
     res.json(ventas);
   } catch (error) {
